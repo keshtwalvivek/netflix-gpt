@@ -1,12 +1,22 @@
 import { useRef, useState } from "react";
 import Header from "./Header";
 import { checkValidateData } from "../utils/Validate";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  updateProfile,
+} from "firebase/auth";
+import { auth } from "../utils/firebase.js";
+import { useNavigate } from "react-router-dom";
+
 const Login = () => {
-  const [isSignIn, setIsSignIn] = useState("true");
+  const [isSignInForm, setIsSignInForm] = useState("true");
   const [errorMessage, setErrorMessage] = useState(null);
   const email = useRef(null);
   const password = useRef(null);
   const name = useRef(null);
+
+  const navigateTo = useNavigate();
 
   const handleButtonClick = (e) => {
     //validation the form data
@@ -15,15 +25,67 @@ const Login = () => {
     const message = checkValidateData(
       email.current.value,
       password.current.value,
-      name.current.value
+      name.current?.value
     );
 
     setErrorMessage(message);
     console.log(message);
+    // if (!message) return;
+
+    if (!isSignInForm) {
+      // Sign Up Logic
+      createUserWithEmailAndPassword(
+        auth,
+        email.current.value,
+        password.current.value
+      )
+        .then((userCredential) => {
+          const user = userCredential.user;
+
+          updateProfile(user, {
+            displayName: name.current.value,
+            photoURL: "https://example.com/jane-q-user/profile.jpg",
+          })
+            .then(() => {
+              // Profile updated!
+
+              navigateTo("/browes");
+            })
+            .catch((error) => {
+              // An error occurred
+              setErrorMessage(error.message);
+            });
+          console.log(user);
+          navigateTo("/browse");
+        })
+        .catch((error) => {
+          const errorCode = error.code;
+          const errorMessage = error.message;
+          setErrorMessage(errorCode + "-" + errorMessage);
+        });
+    } else {
+      // Sign In Logic
+      signInWithEmailAndPassword(
+        auth,
+        email.current.value,
+        password.current.value
+      )
+        .then((userCredential) => {
+          // Signed in
+          const user = userCredential.user;
+          console.log(user);
+          navigateTo("/browse");
+        })
+        .catch((error) => {
+          const errorCode = error.code;
+          const errorMessage = error.message;
+          setErrorMessage(errorCode + "-" + errorMessage);
+        });
+    }
   };
 
   const toggleSignInForm = () => {
-    setIsSignIn(!isSignIn);
+    setIsSignInForm(!isSignInForm);
   };
 
   return (
@@ -40,10 +102,10 @@ const Login = () => {
         <form className="w-3/12 absolute p-12 bg-black my-24 mx-auto right-0 left-0 bg-opacity-80 rounded-sm">
           <h1 className="font-bold text-3xl py-4 text-white">
             {" "}
-            {isSignIn ? "Sign In" : "Sign Up"}
+            {isSignInForm ? "Sign In" : "Sign Up"}
           </h1>
 
-          {!isSignIn && (
+          {!isSignInForm && (
             <input
               ref={name}
               type="text"
@@ -71,11 +133,11 @@ const Login = () => {
             onClick={handleButtonClick}
           >
             {" "}
-            {isSignIn ? "Sign In" : "Sign Up"}
+            {isSignInForm ? "Sign In" : "Sign Up"}
           </button>
           <p className="text-white cursor-pointer" onClick={toggleSignInForm}>
-            {isSignIn
-              ? "New to Netflix? Sign Up Mow"
+            {isSignInForm
+              ? "New to Netflix? Sign Up Now"
               : "Already regisered? Sign In Now"}
           </p>
         </form>
